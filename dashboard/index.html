@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Salud Probabilística de Transformadores · Health Index con incertidumbre calibrada</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Health Index probabilístico con bandas conformales CQR 90 %, RUL condicional (Weibull AFT + RSF), triángulo de Duval canónico IEC 60599, capa de decisión económica VPN y SHAP — flota sintética de 121 transformadores de potencia.">
+  <meta property="og:title" content="Salud Probabilística de Transformadores">
+  <meta property="og:description" content="Health Index con incertidumbre calibrada · RUL condicional · Duval · decisión económica. Edición papel milimetrado, D3 v7.">
+  <meta property="og:type" content="website">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 34 34'%3E%3Crect x='4' y='12' width='26' height='10' fill='none' stroke='%231b2a4a' stroke-width='2'/%3E%3Cline x1='9' y1='12' x2='9' y2='7' stroke='%231b2a4a' stroke-width='2'/%3E%3Cline x1='17' y1='12' x2='17' y2='7' stroke='%231b2a4a' stroke-width='2'/%3E%3Cline x1='25' y1='12' x2='25' y2='7' stroke='%231b2a4a' stroke-width='2'/%3E%3Cline x1='9' y1='22' x2='9' y2='27' stroke='%231b2a4a' stroke-width='2'/%3E%3Cline x1='17' y1='22' x2='17' y2='27' stroke='%231b2a4a' stroke-width='2'/%3E%3Cline x1='25' y1='22' x2='25' y2='27' stroke='%231b2a4a' stroke-width='2'/%3E%3Ccircle cx='17' cy='17' r='3' fill='%23c2571c'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="preload" href="js/vendor/d3.v7.min.js" as="script">
+  <link rel="preload" href="data/fleet_data.json" as="fetch" crossorigin>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<header class="topbar">
+  <a class="brand" href="#top" aria-label="Inicio">
+    <svg class="brand-mark" viewBox="0 0 34 34" width="34" height="34" aria-hidden="true">
+      <rect x="4" y="12" width="26" height="10" fill="none" stroke="currentColor" stroke-width="1.6"/>
+      <line x1="9"  y1="12" x2="9"  y2="7"  stroke="currentColor" stroke-width="1.6"/>
+      <line x1="17" y1="12" x2="17" y2="7"  stroke="currentColor" stroke-width="1.6"/>
+      <line x1="25" y1="12" x2="25" y2="7"  stroke="currentColor" stroke-width="1.6"/>
+      <line x1="9"  y1="22" x2="9"  y2="27" stroke="currentColor" stroke-width="1.6"/>
+      <line x1="17" y1="22" x2="17" y2="27" stroke="currentColor" stroke-width="1.6"/>
+      <line x1="25" y1="22" x2="25" y2="27" stroke="currentColor" stroke-width="1.6"/>
+      <circle class="pulse-dot" cx="17" cy="17" r="2.6" fill="var(--green)"/>
+    </svg>
+    <span class="brand-text">
+      <span class="brand-title">Salud Probabilística</span>
+      <span class="brand-sub">transformadores de potencia · flota sintética · v1.1</span>
+    </span>
+  </a>
+  <nav class="topnav" aria-label="Secciones">
+    <a href="#flota">01 · Flota</a>
+    <a href="#salud">02 · Salud</a>
+    <a href="#quimica">03 · Química</a>
+    <a href="#supervivencia">04 · Supervivencia</a>
+    <a href="#decision">05 · Decisión</a>
+    <a href="#shap">06 · Explicabilidad</a>
+  </nav>
+  <div class="meta-pill" id="fleet-meta">cargando flota…</div>
+</header>
+
+<main id="top">
+
+  <!-- ============ § 00 · HERO ============ -->
+  <section class="hero">
+    <div class="hero-head">
+      <p class="kicker">§ 00 — Una guía visual del riesgo</p>
+      <h1 class="hero-title">Health·Index <span class="thin">probabilístico</span></h1>
+      <p class="hero-lede">La salud de un transformador no es un número: es una <em>distribución</em>.
+        Aquí la flota entera vive sobre un eje de 0 a 100, con banda de incertidumbre calibrada al 90 %,
+        vida remanente condicional y una regla de decisión económica explícita.</p>
+      <p class="hero-hint">↳ Arrastra el <strong>haz de barrido</strong> sobre la flota · haz clic en un punto para fijar la unidad · <kbd>↑</kbd><kbd>↓</kbd> recorren la flota</p>
+    </div>
+
+    <figure class="fig hero-fig" id="hero-fig">
+      <div class="fig-label">Fig. 00 — Flota sobre el eje de Health Index</div>
+      <div class="chart-host" id="chart-hero"></div>
+      <figcaption class="fig-caption">
+        Cada punto es una unidad; la barra vertical es su banda [q05, q95] conformal.
+        El haz naranja recorre el eje y reporta la unidad bajo él.
+      </figcaption>
+    </figure>
+
+    <div class="readout-strip" id="hero-readout" aria-live="polite">
+      <div class="cell"><span class="cell-lbl">unidad</span><span class="cell-val" id="ro-unit">—</span></div>
+      <div class="cell"><span class="cell-lbl">zona Duval</span><span class="cell-val" id="ro-zone">—</span></div>
+      <div class="cell"><span class="cell-lbl">HI q50</span><span class="cell-val" id="ro-hi">—</span></div>
+      <div class="cell"><span class="cell-lbl">banda 90 %</span><span class="cell-val" id="ro-band">—</span></div>
+      <div class="cell"><span class="cell-lbl">RUL mediano</span><span class="cell-val" id="ro-rul">—</span></div>
+      <div class="cell"><span class="cell-lbl">p(falla ≤ 2 a)</span><span class="cell-val" id="ro-pf">—</span></div>
+    </div>
+
+    <div class="kpi-row" id="kpi-row">
+      <div class="kpi"><div class="kpi-num" id="kpi-units">—</div><div class="kpi-lbl">unidades</div></div>
+      <div class="kpi"><div class="kpi-num" id="kpi-failures">—</div><div class="kpi-lbl">fallas observadas</div></div>
+      <div class="kpi"><div class="kpi-num" id="kpi-censored">—</div><div class="kpi-lbl">censuradas</div></div>
+      <div class="kpi"><div class="kpi-num" id="kpi-critical">—</div><div class="kpi-lbl">críticas · q05 &lt; 30</div></div>
+      <div class="kpi"><div class="kpi-num" id="kpi-hi">—</div><div class="kpi-lbl">HI q50 medio</div></div>
+      <div class="kpi"><div class="kpi-num" id="kpi-coverage">—</div><div class="kpi-lbl">cobertura CQR</div></div>
+    </div>
+  </section>
+
+  <!-- ============ § 01 · FLOTA ============ -->
+  <section class="chapter" id="flota">
+    <p class="kicker">§ 01 / FLOTA</p>
+    <h2>El mapa de riesgo<span class="dot-sep">·</span></h2>
+    <p class="prose">Salud presente contra vida remanente: el cuadrante inferior derecho —poco salud, poco tiempo—
+      es la sala de máquinas de la gestión de activos. El tamaño codifica potencia; el color, la firma
+      química de la última muestra (zona Duval). Las unidades con mediana de RUL superior a 30 años
+      aparecen censuradas por grilla en el borde derecho.</p>
+
+    <div class="control-bar">
+      <label class="ctl">
+        <span class="ctl-lbl">filtrar por zona Duval</span>
+        <div class="chip-row" id="zone-chips" role="group" aria-label="Filtro por zona Duval"></div>
+      </label>
+      <label class="ctl">
+        <span class="ctl-lbl">buscar unidad</span>
+        <input id="search-input" type="text" placeholder="TR-…" autocomplete="off" spellcheck="false">
+      </label>
+      <label class="ctl">
+        <span class="ctl-lbl">ordenar el raíl</span>
+        <select id="sort-by">
+          <option value="hi50_asc">HI q50 · peor primero</option>
+          <option value="hi50_desc">HI q50 · mejor primero</option>
+          <option value="uncertainty">incertidumbre q95−q05</option>
+          <option value="rul_asc">RUL RSF · menor primero</option>
+          <option value="age_desc">edad</option>
+          <option value="mva_desc">potencia</option>
+        </select>
+      </label>
+    </div>
+
+    <figure class="fig">
+      <div class="fig-label">Fig. 01 — Health Index vs. vida útil remanente condicional</div>
+      <div class="chart-host" id="chart-fleet"></div>
+      <figcaption class="fig-caption">Eje x: HI mediano · eje y: mediana de RUL del RSF condicional a la edad actual
+        (censurada por grilla a 30 años). Banda sombreada: q50 &lt; 30 · crítico. Anillo punteado rojo: unidades
+        críticas por el criterio pesimista (q05 &lt; 30).</figcaption>
+    </figure>
+  </section>
+
+  <!-- ============ § 02 · SALUD ============ -->
+  <section class="chapter" id="salud">
+    <p class="kicker">§ 02 / SALUD</p>
+    <h2>La unidad bajo el haz<span class="dot-sep">·</span></h2>
+    <p class="prose">Para la unidad seleccionada, su Health Index como intervalo —no como punto—.
+      La banda conformal al 90 % es la respuesta honesta a «¿qué tan sano es este transformador?»;
+      la distribución de la flota al fondo sirve de regla. Los umbrales 30 / 60 separan los estados
+      crítico, degradado y estable.</p>
+
+    <figure class="fig">
+      <div class="fig-label">Fig. 02 — Health Index de la unidad con banda calibrada</div>
+      <div class="chart-host" id="chart-hi"></div>
+      <figcaption class="fig-caption">Pasa el cursor por la banda para leer los cuantiles.
+        La marca superior indica el HI observado sintético cuando está disponible en la cohorte.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ============ § 03 · QUÍMICA ============ -->
+  <section class="chapter" id="quimica">
+    <p class="kicker">§ 03 / QUÍMICA DEL ACEITE</p>
+    <h2>El triángulo dice dónde vive la falla<span class="dot-sep">·</span></h2>
+    <p class="prose">El triángulo de Duval (IEC 60599 / IEEE C57.104) clasifica la falla por la proporción molar
+      de CH₄, C₂H₄ y C₂H₂. Aquí se dibuja con las <em>coordenadas canónicas de zona</em>, con la flota completa
+      como nube de fondo y la unidad seleccionada al frente. La comparación con la serie temporal de gases
+      muestra la trayectoria: un punto puede estar en zona térmica mientras su C₂H₄ se duplica.</p>
+
+    <div class="grid-2">
+      <figure class="fig">
+        <div class="fig-label">Fig. 03 — Triángulo de Duval 1 con zonas canónicas</div>
+        <div class="chart-host" id="chart-duval"></div>
+        <figcaption class="fig-caption">Vértices: CH₄ (arriba), C₂H₂ (izquierda), C₂H₄ (derecha).
+          Pasa el cursor por una zona para ver su descripción; los puntos tenues son la flota.</figcaption>
+      </figure>
+      <figure class="fig">
+        <div class="fig-label">Fig. 04 — Serie temporal DGA · escala logarítmica</div>
+        <div class="chart-host" id="chart-ts"></div>
+        <figcaption class="fig-caption">Cinco gases clave en ppm. La línea de referencia punteada marca
+          el límite IEEE C57.104 (estado 2) cuando cae dentro del rango. Mueve el cursor para el crosshair.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ============ § 04 · SUPERVIVENCIA ============ -->
+  <section class="chapter" id="supervivencia">
+    <p class="kicker">§ 04 / SUPERVIVENCIA</p>
+    <h2>Vida remanente, condicional a hoy<span class="dot-sep">·</span></h2>
+    <p class="prose">Dos modelos responden la pregunta correcta —dado que la unidad ya sobrevivió a su edad actual
+      <em>a</em>, ¿cuál es S(a + r)/S(a)?—: un Random Survival Forest (sólido) y un Weibull AFT (discontinuo).
+      La separación entre ambos es incertidumbre de modelo, y se muestra como banda. El área naranja bajo la curva
+      en los primeros dos años es la probabilidad de falla que consume la capa de decisión.</p>
+
+    <figure class="fig">
+      <div class="fig-label">Fig. 05 — Curvas de supervivencia condicionales · años desde hoy</div>
+      <div class="chart-host" id="chart-surv"></div>
+      <figcaption class="fig-caption">RSF (azul marino) vs. Weibull AFT (verde, discontinuo); banda entre modelos.
+        Las líneas de mediana marcan el RUL de cada modelo; la zona sombreada 0–2 años alimenta la decisión.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ============ § 05 · DECISIÓN ============ -->
+  <section class="chapter" id="decision">
+    <p class="kicker">§ 05 / DECISIÓN ECONÓMICA</p>
+    <h2>Intervenir, reemplazar o esperar<span class="dot-sep">·</span></h2>
+    <p class="prose">La regla compara el VPN esperado de tres alternativas sobre un horizonte de 12 años,
+      usando la curva condicional del RSF. Actuar en el año <em>t</em> asume el riesgo de falla hasta <em>t</em>
+      y difiere el capital: por eso reemplazar «más tarde» no es gratis. Además, intervenir <em>mitiga</em> el
+      riesgo (hazard residual 30 %) pero no lo elimina — solo el reemplazo lo hace. Mueve los deslizadores:
+      la recomendación y las curvas se recalculan al instante. En el marco chileno, postergar reemplazo con
+      evidencia es ingreso regulado gestionado (VAD/VATT).</p>
+
+    <div class="decision-grid">
+      <div class="sliders">
+        <label class="slider-row"><span>costo de falla catastrófica <em>C<sub>f</sub></em></span>
+          <output id="cost-fail-label">$ 8.0 M</output>
+          <input type="range" id="cost-fail" min="2" max="20" step="0.5" value="8.0"></label>
+        <label class="slider-row"><span>costo de intervención temprana <em>C<sub>i</sub></em></span>
+          <output id="cost-int-label">$ 250 k</output>
+          <input type="range" id="cost-int" min="20" max="800" step="10" value="250"></label>
+        <label class="slider-row"><span>costo de reemplazo <em>C<sub>r</sub></em></span>
+          <output id="cost-rep-label">$ 1.5 M</output>
+          <input type="range" id="cost-rep" min="0.5" max="8" step="0.1" value="1.5"></label>
+        <label class="slider-row"><span>tasa de descuento anual <em>r</em></span>
+          <output id="rate-label">6.0 %</output>
+          <input type="range" id="rate" min="2" max="12" step="0.5" value="6"></label>
+
+        <div class="rec-card" id="rec-card">
+          <div class="rec-action" id="rec-action">—</div>
+          <div class="rec-rows">
+            <div class="kv"><span>año óptimo</span><b id="rec-year">—</b></div>
+            <div class="kv"><span>VPN de la acción</span><b id="rec-npv">—</b></div>
+            <div class="kv"><span>p(falla ≤ 2 a)</span><b id="rec-prob">—</b></div>
+            <div class="kv"><span>ahorro vs. no actuar</span><b id="rec-save">—</b></div>
+            <div class="kv"><span>CAPEX diferido (flota)</span><b id="rec-capex">—</b></div>
+          </div>
+          <p class="rec-note" id="rec-note"></p>
+        </div>
+      </div>
+
+      <figure class="fig">
+        <div class="fig-label">Fig. 06 — VPN esperado por año de decisión</div>
+        <div class="chart-host" id="chart-decision"></div>
+        <figcaption class="fig-caption">Intervenir (azul) y reemplazar (rojo discontinuo) por año de decisión —
+          ambos incluyen el riesgo pre-acción y la intervención su hazard residual 30 %; monitorear (línea
+          horizontal). El rombo marca el óptimo global. Flash verde al recalcular.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ============ § 06 · SHAP ============ -->
+  <section class="chapter" id="shap">
+    <p class="kicker">§ 06 / EXPLICABILIDAD</p>
+    <h2>Por qué el modelo decide lo que decide<span class="dot-sep">·</span></h2>
+    <p class="prose">Contribución media |SHAP| sobre el cuantil mediano. El resultado estructural de esta tesis:
+      la química del aceite —C₂H₄, H₂, C₂H₂— domina la predicción y la edad cronológica queda fuera del podio.
+      Un regulador puede auditar cada número hasta su origen.</p>
+
+    <figure class="fig">
+      <div class="fig-label">Fig. 07 — Importancia SHAP · top 12 features</div>
+      <div class="chart-host" id="chart-shap"></div>
+      <figcaption class="fig-caption">Barras coloreadas: gases disueltos (DGA). Barras neutras: variables
+        operacionales y de placa. Valores en puntos de HI.</figcaption>
+    </figure>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <div class="footer-grid">
+    <div>
+      <strong>Marco metodológico</strong>
+      <p>LightGBM cuantílico (q05/q50/q95) + Conformalized Quantile Regression (Romano et al. 2019) ·
+         Weibull AFT (scipy, features estandarizadas) · Random Survival Forest con splits log-rank ·
+         RUL condicional S(a+r)/S(a) · SHAP TreeExplainer. Datos sintéticos según IEEE C57.104 / IEC 60599.</p>
+    </div>
+    <div>
+      <strong>Decisión y regulación</strong>
+      <p>VPN esperado de intervenir / reemplazar / monitorear con riesgo pre-acción internalizado.
+         Conexión VAD/VATT y reproducibilidad PNP semestral (Panel de Expertos, Chile).</p>
+    </div>
+    <div>
+      <strong>Edición</strong>
+      <p>Volumen I · 2026 · flota sintética de 200 unidades, cohorte con DGA: 121
+         <em>(no es una flota operativa)</em>.<br>Plots: D3 v7 · Calibración: CQR 90 %</p>
+    </div>
+  </div>
+  <p class="colophon">© MMXXVI · Compuesto en Space Grotesk, Newsreader &amp; JetBrains Mono — continuamente bajo incertidumbre calibrada</p>
+</footer>
+
+<div class="tooltip" id="tooltip" role="tooltip" aria-hidden="true"></div>
+
+<script src="js/vendor/d3.v7.min.js"></script>
+<script src="js/duval.js"></script>
+<script src="js/decision.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

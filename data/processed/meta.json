@@ -1,0 +1,18 @@
+{
+  "n_units": 200,
+  "study_end_year": 2024,
+  "start_year": 2018,
+  "seed": 42,
+  "regimes_distribution": {
+    "NORMAL": 75,
+    "T1": 34,
+    "T2": 24,
+    "D2": 23,
+    "PD": 14,
+    "DT": 13,
+    "D1": 10,
+    "T3": 7
+  },
+  "n_failures_observed": 104,
+  "n_censored": 96
+}

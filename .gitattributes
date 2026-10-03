@@ -1,0 +1,7 @@
+# Line endings consistentes (LF en el repo y en el deploy)
+* text=auto eol=lf
+
+# Binarios
+*.pkl binary
+*.png binary
+*.jpg binary
